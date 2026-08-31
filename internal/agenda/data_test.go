@@ -22,13 +22,12 @@ func TestLoadData(t *testing.T) {
     "day": "mon",
     "start": "08:00",
     "end": "08:45",
-    "title": "Cj",
-    "subtitle": "FrE",
-    "note": "1C",
-    "style": "muted",
-    "stack": { "index": 1, "total": 2 }
-  }]
-}`)
+	    "title": "Cj",
+	    "subtitle": "FrE",
+	    "note": "1C",
+	    "style": "muted"
+	  }]
+	}`)
 
 	data, err := LoadData(dataPath)
 	if err != nil {
@@ -60,9 +59,6 @@ func TestLoadData(t *testing.T) {
 	}
 	if len(data.Events) != 1 || data.Events[0].Title != "Cj" || data.Events[0].Style != "muted" {
 		t.Fatalf("Events = %#v", data.Events)
-	}
-	if data.Events[0].Stack.Index != 1 || data.Events[0].Stack.Total != 2 {
-		t.Fatalf("Stack = %#v", data.Events[0].Stack)
 	}
 }
 

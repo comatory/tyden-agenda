@@ -60,12 +60,6 @@ type Event struct {
 	Subtitle string `json:"subtitle,omitempty"`
 	Note     string `json:"note,omitempty"`
 	Style    string `json:"style,omitempty"`
-	Stack    Stack  `json:"stack,omitempty"`
-}
-
-type Stack struct {
-	Index int `json:"index"`
-	Total int `json:"total"`
 }
 
 func LoadData(path string) (Data, error) {

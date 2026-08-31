@@ -22,7 +22,6 @@ func TestRender(t *testing.T) {
 			Title:    "Cj",
 			Subtitle: "FrE",
 			Note:     "1C",
-			Stack:    Stack{Index: 1, Total: 2},
 		}},
 	}
 
@@ -45,7 +44,7 @@ func TestRender(t *testing.T) {
 		"08:00-08:45",
 		"data-marker-type=\"event-boundary\"",
 		"data-marker-type=\"hour-guide\"",
-		"--top: 60.0000%; --height: 28.0000%;",
+		"--top: 32.0000%; --height: 56.0000%;",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("rendered HTML missing %q:\n%s", want, html)
@@ -176,26 +175,38 @@ func TestRenderHidesEventTimesWhenConfigured(t *testing.T) {
 	}
 }
 
-func TestRenderRejectsInvalidStack(t *testing.T) {
+func TestRenderStacksOverlappingEvents(t *testing.T) {
 	data := Data{
+		Days:      []Day{"mon"},
 		People:    []Person{{ID: "p1", Label: "P1"}},
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
 		Events: []Event{{
 			Person: "p1",
 			Day:    "mon",
-			Start:  "08:00",
-			End:    "08:45",
-			Title:  "Cj",
-			Stack:  Stack{Index: 2, Total: 2},
+			Start:  "07:30",
+			End:    "15:00",
+			Title:  "Skolka",
+		}, {
+			Person: "p1",
+			Day:    "mon",
+			Start:  "10:00",
+			End:    "10:45",
+			Title:  "Keramika",
 		}},
 	}
 
-	err := Render(data, &bytes.Buffer{}, RenderOptions{})
-	if err == nil {
-		t.Fatal("Render() error = nil, want error")
+	var output bytes.Buffer
+	if err := Render(data, &output, RenderOptions{}); err != nil {
+		t.Fatalf("Render() error = %v", err)
 	}
-	if got := err.Error(); !strings.Contains(got, "index must be between 0 and total - 1") {
-		t.Fatalf("error = %q, want stack error", got)
+	got := output.String()
+	for _, want := range []string{
+		"--top: 32.0000%; --height: 28.0000%;",
+		"--top: 60.0000%; --height: 28.0000%;",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("rendered HTML missing %q:\n%s", want, got)
+		}
 	}
 }
 

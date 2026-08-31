@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -52,6 +53,8 @@ type personView struct {
 type eventView struct {
 	Person   string
 	Day      Day
+	Start    int
+	End      int
 	Time     string
 	Title    string
 	Subtitle string
@@ -142,17 +145,14 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			return renderView{}, fmt.Errorf("event %q end must be after start", event.Title)
 		}
 
-		stackTop, stackHeight, err := stackPosition(event.Stack)
-		if err != nil {
-			return renderView{}, fmt.Errorf("event %q stack: %w", event.Title, err)
-		}
-
 		eventLeft := percent(eventStart-start, end-start)
 		eventEndLeft := percent(eventEnd-start, end-start)
 
 		events = append(events, eventView{
 			Person:   event.Person,
 			Day:      event.Day,
+			Start:    eventStart,
+			End:      eventEnd,
 			Time:     event.Start + "-" + event.End,
 			Title:    event.Title,
 			Subtitle: event.Subtitle,
@@ -160,14 +160,13 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			Style:    eventStyle(event.Style),
 			Left:     eventLeft,
 			Width:    percent(eventEnd-eventStart, end-start),
-			Top:      stackTop,
-			Height:   stackHeight,
 		})
 		boundaries = append(boundaries,
 			eventBoundaryView{Day: event.Day, Left: eventLeft},
 			eventBoundaryView{Day: event.Day, Left: eventEndLeft},
 		)
 	}
+	stackEvents(events)
 
 	dayViews := make([]dayView, 0, len(days))
 	for index, day := range days {
@@ -253,20 +252,78 @@ func eventStyle(style string) string {
 	}
 }
 
-func stackPosition(stack Stack) (string, string, error) {
-	if stack.Total == 0 && stack.Index == 0 {
-		return "32.0000%", "56.0000%", nil
-	}
-	if stack.Total <= 0 {
-		return "", "", fmt.Errorf("total must be positive")
-	}
-	if stack.Index < 0 || stack.Index >= stack.Total {
-		return "", "", fmt.Errorf("index must be between 0 and total - 1")
+func stackEvents(events []eventView) {
+	groups := map[string][]int{}
+	for index, event := range events {
+		key := string(event.Day) + "\x00" + event.Person
+		groups[key] = append(groups[key], index)
 	}
 
-	height := 100.0 / float64(stack.Total)
-	top := 32.0 + float64(stack.Index)*height*0.56
-	return fmt.Sprintf("%.4f%%", top), fmt.Sprintf("%.4f%%", height*0.56), nil
+	for _, indexes := range groups {
+		sort.SliceStable(indexes, func(i, j int) bool {
+			left := events[indexes[i]]
+			right := events[indexes[j]]
+			if left.Start == right.Start {
+				return left.End < right.End
+			}
+			return left.Start < right.Start
+		})
+
+		clusters := overlappingClusters(events, indexes)
+		for _, cluster := range clusters {
+			assignClusterLanes(events, cluster)
+		}
+	}
+}
+
+func overlappingClusters(events []eventView, indexes []int) [][]int {
+	var clusters [][]int
+	for _, index := range indexes {
+		if len(clusters) == 0 || events[index].Start >= clusterEnd(events, clusters[len(clusters)-1]) {
+			clusters = append(clusters, []int{index})
+			continue
+		}
+		clusters[len(clusters)-1] = append(clusters[len(clusters)-1], index)
+	}
+	return clusters
+}
+
+func clusterEnd(events []eventView, indexes []int) int {
+	end := 0
+	for _, index := range indexes {
+		if events[index].End > end {
+			end = events[index].End
+		}
+	}
+	return end
+}
+
+func assignClusterLanes(events []eventView, indexes []int) {
+	laneEnds := []int{}
+	lanes := map[int]int{}
+	for _, index := range indexes {
+		lane := 0
+		for lane < len(laneEnds) && events[index].Start < laneEnds[lane] {
+			lane++
+		}
+		if lane == len(laneEnds) {
+			laneEnds = append(laneEnds, events[index].End)
+		} else {
+			laneEnds[lane] = events[index].End
+		}
+		lanes[index] = lane
+	}
+
+	total := len(laneEnds)
+	for _, index := range indexes {
+		events[index].Top, events[index].Height = stackPosition(lanes[index], total)
+	}
+}
+
+func stackPosition(index, total int) (string, string) {
+	height := 100.0 / float64(total)
+	top := 32.0 + float64(index)*height*0.56
+	return fmt.Sprintf("%.4f%%", top), fmt.Sprintf("%.4f%%", height*0.56)
 }
 
 func minuteLines(start, end int) []minuteLineView {
