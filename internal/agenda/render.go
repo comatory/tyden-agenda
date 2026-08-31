@@ -302,10 +302,11 @@ var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ .Title }}</title>
 <style>
-@page { size: A4 landscape; margin: 10mm; }
+@page { size: 297mm 210mm; margin: 0; }
 * { box-sizing: border-box; }
-body { margin: 0; color: #111; font-family: Arial, Helvetica, sans-serif; }
-.agenda { display: grid; grid-template-columns: 28mm 1fr; grid-template-rows: 14mm repeat({{ len .Days }}, 1fr); height: 205mm; border: 1px solid #777; }
+html, body { margin: 0; width: 297mm; min-height: 210mm; color: #111; font-family: Arial, Helvetica, sans-serif; }
+body { padding: 6mm; overflow: hidden; }
+.agenda { display: grid; grid-template-columns: 28mm 1fr; grid-template-rows: 14mm repeat({{ len .Days }}, 1fr); width: 285mm; height: 198mm; border: 1px solid #777; overflow: hidden; }
 .title { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: end; padding: 0 3mm 2mm; border-bottom: 1px solid #777; font-size: 15pt; font-weight: 700; }
 .range { font-size: 8pt; font-weight: 400; }
 .day-label { display: grid; grid-template-columns: 12mm 1fr; grid-template-rows: repeat({{ len (index .Days 0).People }}, 1fr); border-right: 1px solid #777; border-bottom: 1px solid #aaa; }
@@ -327,7 +328,12 @@ body { margin: 0; color: #111; font-family: Arial, Helvetica, sans-serif; }
 .event-subtitle { font-size: 7pt; margin-top: 0.5mm; }
 .event-note { position: absolute; right: 1mm; top: 1mm; font-size: 6pt; }
 .event-time { position: absolute; left: var(--left); width: var(--width); top: 13%; text-align: center; font-size: 7pt; font-weight: 700; z-index: 3; }
-@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+@media print {
+  html, body { width: 297mm; height: 210mm; min-height: 0; }
+  body { padding: 6mm; overflow: hidden; }
+  .agenda { break-inside: avoid; page-break-inside: avoid; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 </style>
 </head>
 <body>
