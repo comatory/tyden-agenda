@@ -87,7 +87,7 @@ func TestRunShowsSlotTimesByDefault(t *testing.T) {
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
   "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
-  "events": []
+  "events": [{ "day": "mon", "start": "08:00", "end": "08:45", "title": "Cj" }]
 }`)
 
 	err := Run([]string{"--data", dataPath}, &stdout, &stderr)
@@ -96,6 +96,24 @@ func TestRunShowsSlotTimesByDefault(t *testing.T) {
 	}
 	if got := stdout.String(); !strings.Contains(got, "08:00-08:45") {
 		t.Fatalf("stdout = %q, want slot time", got)
+	}
+}
+
+func TestRunHidesUnpopulatedSlotTimes(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	dataPath := writeTestData(t, `{
+  "timeRange": { "start": "07:00", "end": "19:00" },
+  "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
+  "events": []
+}`)
+
+	err := Run([]string{"--data", dataPath}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if got := stdout.String(); strings.Contains(got, "08:00-08:45") {
+		t.Fatalf("stdout contains unpopulated slot time: %q", got)
 	}
 }
 

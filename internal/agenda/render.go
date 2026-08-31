@@ -39,6 +39,7 @@ type dayView struct {
 	Key   Day
 	Label string
 	Row   int
+	Slots []daySlotView
 }
 
 type eventView struct {
@@ -59,6 +60,11 @@ type slotView struct {
 	End   string
 	Left  string
 	Width string
+}
+
+type daySlotView struct {
+	slotView
+	Populated bool
 }
 
 type minuteLineView struct {
@@ -82,12 +88,6 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 	days := data.Days
 	if len(days) == 0 {
 		days = defaultDays
-	}
-
-	dayViews := make([]dayView, 0, len(days))
-	for index, day := range days {
-		row := index + 2
-		dayViews = append(dayViews, dayView{Key: day, Label: dayLabel(day), Row: row})
 	}
 
 	slots := make([]slotView, 0, len(data.Slots))
@@ -143,6 +143,12 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			Top:      stackTop,
 			Height:   stackHeight,
 		})
+	}
+
+	dayViews := make([]dayView, 0, len(days))
+	for index, day := range days {
+		row := index + 2
+		dayViews = append(dayViews, dayView{Key: day, Label: dayLabel(day), Row: row, Slots: daySlots(slots, events, day)})
 	}
 
 	title := data.Title
@@ -252,6 +258,28 @@ func minuteLines(start, end int) []minuteLineView {
 	return lines
 }
 
+func daySlots(slots []slotView, events []eventView, day Day) []daySlotView {
+	daySlots := make([]daySlotView, 0, len(slots))
+	lastPopulated := -1
+	for _, slot := range slots {
+		view := daySlotView{slotView: slot}
+		for _, event := range events {
+			if event.Day == day && event.Left == slot.Left && event.Width == slot.Width {
+				view.Populated = true
+				lastPopulated = len(daySlots)
+				break
+			}
+		}
+		daySlots = append(daySlots, view)
+	}
+	if lastPopulated == -1 {
+		return nil
+	}
+
+	daySlots = daySlots[:lastPopulated+1]
+	return daySlots
+}
+
 var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap{
 	"sameDay": func(a, b Day) bool { return a == b },
 }).Parse(`<!doctype html>
@@ -289,7 +317,7 @@ body { margin: 0; color: #111; font-family: Arial, Helvetica, sans-serif; }
     <div class="day-label" style="grid-row: {{ .Row }};">{{ .Label }}</div>
     <section class="day-grid" style="grid-row: {{ .Row }};">
       {{ range $.MinuteLines }}<div class="line" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
-      {{ range $.Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Label }}{{ if $.Options.ShowSlotTimes }}<br><small>{{ .Start }}-{{ .End }}</small>{{ end }}</div>{{ end }}
+      {{ range .Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Label }}{{ if and $.Options.ShowSlotTimes .Populated }}<br><small>{{ .Start }}-{{ .End }}</small>{{ end }}</div>{{ end }}
       {{ range $.Events }}{{ if sameDay .Day $day }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
         {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
         <div class="event-title">{{ .Title }}</div>
