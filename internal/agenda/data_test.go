@@ -23,7 +23,8 @@ func TestLoadData(t *testing.T) {
     "title": "Cj",
     "subtitle": "FrE",
     "note": "1C",
-    "style": "muted"
+    "style": "muted",
+    "stack": { "index": 1, "total": 2 }
   }]
 }`)
 
@@ -54,6 +55,9 @@ func TestLoadData(t *testing.T) {
 	}
 	if len(data.Events) != 1 || data.Events[0].Title != "Cj" || data.Events[0].Style != "muted" {
 		t.Fatalf("Events = %#v", data.Events)
+	}
+	if data.Events[0].Stack.Index != 1 || data.Events[0].Stack.Total != 2 {
+		t.Fatalf("Stack = %#v", data.Events[0].Stack)
 	}
 }
 

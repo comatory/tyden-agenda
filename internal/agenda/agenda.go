@@ -41,10 +41,10 @@ func Run(args []string, stdout, stderr io.Writer) error {
 	if *dataPath == "" {
 		return errors.New("missing required --data")
 	}
-	if _, err := LoadData(*dataPath); err != nil {
+	data, err := LoadData(*dataPath)
+	if err != nil {
 		return err
 	}
 
-	_, err := fmt.Fprintf(stdout, "<!-- TODO render agenda from %s -->\n", *dataPath)
-	return err
+	return Render(data, stdout)
 }

@@ -58,7 +58,7 @@ func TestRunRejectsUnknownFlag(t *testing.T) {
 	}
 }
 
-func TestRunDataPlaceholder(t *testing.T) {
+func TestRunRendersData(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	dataPath := writeTestData(t, `{
@@ -70,8 +70,11 @@ func TestRunDataPlaceholder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got, want := stdout.String(), "<!-- TODO render agenda from "+dataPath+" -->\n"; got != want {
-		t.Fatalf("stdout = %q, want %q", got, want)
+	if got := stdout.String(); !strings.Contains(got, "<!doctype html>") {
+		t.Fatalf("stdout = %q, want HTML", got)
+	}
+	if got := stdout.String(); !strings.Contains(got, "Cj") {
+		t.Fatalf("stdout = %q, want event title", got)
 	}
 	if got := stderr.String(); got != "" {
 		t.Fatalf("stderr = %q, want empty", got)

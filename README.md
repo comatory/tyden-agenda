@@ -101,7 +101,16 @@ Example with optional metadata and lesson slots:
       "end": "08:45",
       "title": "Cj",
       "subtitle": "FrE",
-      "note": "1C"
+      "note": "1C",
+      "stack": { "index": 0, "total": 2 }
+    },
+    {
+      "day": "mon",
+      "start": "08:00",
+      "end": "08:45",
+      "title": "Aj",
+      "subtitle": "Blz",
+      "stack": { "index": 1, "total": 2 }
     },
     {
       "day": "thu",
@@ -141,6 +150,14 @@ Event fields:
 | `subtitle` | no | Secondary text, for example teacher or room. |
 | `note` | no | Small note, for example class/group marker. |
 | `style` | no | Optional rendering hint. Supported initial values: `normal`, `muted`, `outline`. |
+| `stack` | no | Optional vertical split inside the event block. Use when multiple events share the same day and time. |
+
+Stack fields:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `index` | yes | Zero-based position inside the stack. Top item is `0`. |
+| `total` | yes | Total number of stacked items in the same block. |
 
 Open decisions for later:
 
