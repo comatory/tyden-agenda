@@ -21,6 +21,7 @@ const (
 type RenderOptions struct {
 	ShowHourLabels bool
 	ShowSlotTimes  bool
+	Locale         string
 }
 
 func Render(data Data, writer io.Writer, options RenderOptions) error {
@@ -41,11 +42,12 @@ type renderView struct {
 	Events      []eventView
 	MinuteLines []minuteLineView
 	Options     RenderOptions
+	Locale      string
+	Translate   func(string) string
 }
 
 type dayView struct {
 	Day        Day
-	Label      string
 	Row        int
 	People     []personView
 	Slots      []daySlotView
@@ -58,24 +60,27 @@ type personView struct {
 }
 
 type eventView struct {
-	Person   string
-	Day      Day
-	Start    int
-	End      int
-	Time     string
-	Title    string
-	Subtitle string
-	Note     string
-	Style    string
-	TitlePt  string
-	SubPt    string
-	NotePt   string
-	PadY     string
-	PadX     string
-	Left     string
-	Width    string
-	Top      string
-	Height   string
+	Person    string
+	Day       Day
+	Start     int
+	End       int
+	StartRaw  string
+	StartText string
+	EndRaw    string
+	EndText   string
+	Title     string
+	Subtitle  string
+	Note      string
+	Style     string
+	TitlePt   string
+	SubPt     string
+	NotePt    string
+	PadY      string
+	PadX      string
+	Left      string
+	Width     string
+	Top       string
+	Height    string
 }
 
 type eventBoundaryView struct {
@@ -102,6 +107,12 @@ type minuteLineView struct {
 }
 
 func newRenderView(data Data, options RenderOptions) (renderView, error) {
+	locale, err := newLocale(options.Locale)
+	if err != nil {
+		return renderView{}, err
+	}
+	options.Locale = locale.tagValue()
+
 	start, err := parseMinutes(data.TimeRange.Start)
 	if err != nil {
 		return renderView{}, fmt.Errorf("parse time range start: %w", err)
@@ -135,8 +146,8 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 
 		slots = append(slots, slotView{
 			Label: slot.Label,
-			Start: slot.Start,
-			End:   slot.End,
+			Start: locale.formatTime(slotStart),
+			End:   locale.formatTime(slotEnd),
 			Left:  percent(slotStart-start, end-start),
 			Width: percent(slotEnd-slotStart, end-start),
 		})
@@ -162,22 +173,25 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 		eventWidthMM := float64(eventEnd-eventStart) / float64(end-start) * agendaGridWidthMM
 
 		events = append(events, eventView{
-			Person:   event.Person,
-			Day:      event.Day,
-			Start:    eventStart,
-			End:      eventEnd,
-			Time:     event.Start + "-" + event.End,
-			Title:    event.Title,
-			Subtitle: event.Subtitle,
-			Note:     event.Note,
-			Style:    eventStyle(event.Style),
-			TitlePt:  textSize(event.Title, eventWidthMM, 11, 5),
-			SubPt:    textSize(event.Subtitle, eventWidthMM, 7, 4),
-			NotePt:   textSize(event.Note, eventWidthMM*0.35, 6, 3),
-			PadY:     "2mm",
-			PadX:     "1mm",
-			Left:     eventLeft,
-			Width:    percent(eventEnd-eventStart, end-start),
+			Person:    event.Person,
+			Day:       event.Day,
+			Start:     eventStart,
+			End:       eventEnd,
+			StartRaw:  event.Start,
+			StartText: locale.formatTime(eventStart),
+			EndRaw:    event.End,
+			EndText:   locale.formatTime(eventEnd),
+			Title:     event.Title,
+			Subtitle:  event.Subtitle,
+			Note:      event.Note,
+			Style:     eventStyle(event.Style),
+			TitlePt:   textSize(event.Title, eventWidthMM, 11, 5),
+			SubPt:     textSize(event.Subtitle, eventWidthMM, 7, 4),
+			NotePt:    textSize(event.Note, eventWidthMM*0.35, 6, 3),
+			PadY:      "2mm",
+			PadX:      "1mm",
+			Left:      eventLeft,
+			Width:     percent(eventEnd-eventStart, end-start),
 		})
 		boundaries = append(boundaries,
 			eventBoundaryView{Day: event.Day, Left: eventLeft},
@@ -192,7 +206,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 		for _, person := range data.People {
 			people = append(people, personView(person))
 		}
-		dayViews = append(dayViews, dayView{Day: day, Label: dayLabel(day), Row: index + 2, People: people, Slots: daySlots(slots, events, day), Boundaries: dayBoundaries(boundaries, day)})
+		dayViews = append(dayViews, dayView{Day: day, Row: index + 2, People: people, Slots: daySlots(slots, events, day), Boundaries: dayBoundaries(boundaries, day)})
 	}
 
 	title := data.Title
@@ -205,13 +219,15 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 
 	return renderView{
 		Title:       title,
-		TimeStart:   data.TimeRange.Start,
-		TimeEnd:     data.TimeRange.End,
+		TimeStart:   locale.formatTime(start),
+		TimeEnd:     locale.formatTime(end),
 		Days:        dayViews,
 		Slots:       slots,
 		Events:      events,
-		MinuteLines: minuteLines(start, end),
+		MinuteLines: minuteLines(start, end, locale),
 		Options:     options,
+		Locale:      locale.tagValue(),
+		Translate:   locale.translate,
 	}, nil
 }
 
@@ -257,27 +273,6 @@ func textSize(text string, boxWidthMM, maxPt, minPt float64) string {
 		fitPt = minPt
 	}
 	return fmt.Sprintf("%.1fpt", fitPt)
-}
-
-func dayLabel(day Day) string {
-	switch day {
-	case "mon":
-		return "Mon"
-	case "tue":
-		return "Tue"
-	case "wed":
-		return "Wed"
-	case "thu":
-		return "Thu"
-	case "fri":
-		return "Fri"
-	case "sat":
-		return "Sat"
-	case "sun":
-		return "Sun"
-	default:
-		return string(day)
-	}
 }
 
 func eventStyle(style string) string {
@@ -391,7 +386,7 @@ func scaleMM(value, scale, minMM float64) string {
 	return fmt.Sprintf("%.1fmm", mm)
 }
 
-func minuteLines(start, end int) []minuteLineView {
+func minuteLines(start, end int, locale locale) []minuteLineView {
 	firstHour := start
 	if firstHour%60 != 0 {
 		firstHour += 60 - firstHour%60
@@ -400,7 +395,7 @@ func minuteLines(start, end int) []minuteLineView {
 	var lines []minuteLineView
 	for minute := firstHour; minute <= end; minute += 60 {
 		lines = append(lines, minuteLineView{
-			Label: fmt.Sprintf("%02d:%02d", minute/60, minute%60),
+			Label: locale.formatTime(minute),
 			Left:  percent(minute-start, end-start),
 		})
 	}
@@ -440,8 +435,10 @@ func dayBoundaries(boundaries []eventBoundaryView, day Day) []eventBoundaryView 
 
 var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap{
 	"samePerson": func(event eventView, day Day, person string) bool { return event.Day == day && event.Person == person },
+	"dayKey":     func(day Day) string { return "day." + string(day) },
+	"t":          func(view renderView, key string) string { return view.Translate(key) },
 }).Parse(`<!doctype html>
-<html lang="en">
+<html lang="{{ .Locale }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -488,7 +485,7 @@ body { padding: 6mm; overflow: hidden; }
   <header class="title"><span>{{ .Title }}</span><span class="range">{{ .TimeStart }}-{{ .TimeEnd }}</span></header>
   {{ range .Days }}{{ $day := .Day }}
     <div class="day-label" style="grid-row: {{ .Row }};">
-      <div class="day-name">{{ .Label }}</div>
+      <div class="day-name">{{ t $ (dayKey .Day) }}</div>
       {{ range .People }}<div class="day-person">{{ .Label }}</div>{{ end }}
     </div>
     <section class="day-grid" style="grid-row: {{ .Row }};">
@@ -497,7 +494,7 @@ body { padding: 6mm; overflow: hidden; }
       {{ range .People }}{{ $person := .ID }}
         <section class="person-grid">
           {{ range $.MinuteLines }}<div class="line" data-marker-type="hour-guide" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
-          {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};"><span>{{ .Time }}</span></div>{{ end }}{{ end }}{{ end }}
+          {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};"><span><time datetime="{{ .StartRaw }}">{{ .StartText }}</time>-<time datetime="{{ .EndRaw }}">{{ .EndText }}</time></span></div>{{ end }}{{ end }}{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }}; --title-size: {{ .TitlePt }}; --subtitle-size: {{ .SubPt }}; --note-size: {{ .NotePt }}; --pad-y: {{ .PadY }}; --pad-x: {{ .PadX }};">
             {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
             <div class="event-title">{{ .Title }}</div>

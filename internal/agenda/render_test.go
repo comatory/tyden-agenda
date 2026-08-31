@@ -41,7 +41,7 @@ func TestRender(t *testing.T) {
 		"Cj",
 		"FrE",
 		"1C",
-		"08:00-08:45",
+		`<time datetime="08:00">08:00</time>-<time datetime="08:45">08:45</time>`,
 		"data-marker-type=\"event-boundary\"",
 		"data-marker-type=\"hour-guide\"",
 		"--top: 32.0000%; --height: 56.0000%;",
@@ -64,7 +64,7 @@ func TestRenderHidesSlotTimesWhenNoEvents(t *testing.T) {
 	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
-	if got := output.String(); strings.Contains(got, "08:00-08:45") {
+	if got := output.String(); strings.Contains(got, `<time datetime="08:00">08:00</time>`) {
 		t.Fatalf("rendered HTML contains unpopulated slot time:\n%s", got)
 	}
 }
@@ -107,7 +107,7 @@ func TestRenderShowsTimeAboveEvent(t *testing.T) {
 	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
-	if got := output.String(); !strings.Contains(got, "17:30-18:30") {
+	if got := output.String(); !strings.Contains(got, `<time datetime="17:30">17:30</time>-<time datetime="18:30">18:30</time>`) {
 		t.Fatalf("rendered HTML missing activity time:\n%s", got)
 	}
 }
@@ -152,7 +152,7 @@ func TestRenderSlotLabelsOncePerDay(t *testing.T) {
 	if got := strings.Count(output.String(), "class=\"slot\""); got != 1 {
 		t.Fatalf("slot count = %d, want 1:\n%s", got, output.String())
 	}
-	if got := output.String(); !strings.Contains(got, "08:00-08:45") {
+	if got := output.String(); !strings.Contains(got, `<time datetime="08:00">08:00</time>-<time datetime="08:45">08:45</time>`) {
 		t.Fatalf("rendered HTML missing populated slot time:\n%s", got)
 	}
 }
@@ -170,7 +170,7 @@ func TestRenderHidesEventTimesWhenConfigured(t *testing.T) {
 	if err := Render(data, &output, RenderOptions{ShowSlotTimes: false}); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
-	if got := output.String(); strings.Contains(got, "08:00-08:45") {
+	if got := output.String(); strings.Contains(got, `<time datetime="08:00">08:00</time>`) {
 		t.Fatalf("rendered HTML contains event time:\n%s", got)
 	}
 }
@@ -249,6 +249,27 @@ func TestRenderDefaultsDays(t *testing.T) {
 	for _, want := range []string{"Mon", "Tue", "Wed", "Thu", "Fri", "M"} {
 		if !strings.Contains(output.String(), want) {
 			t.Fatalf("rendered HTML missing %q:\n%s", want, output.String())
+		}
+	}
+}
+
+func TestRenderLocalizesCzechLabelsAndTimes(t *testing.T) {
+	data := Data{
+		Days:      []Day{"mon", "tue", "wed", "thu", "fri", "sat", "sun"},
+		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
+		People:    []Person{{ID: "p1", Label: "P1"}},
+		Events:    []Event{{Person: "p1", Day: "mon", Start: "08:00", End: "08:45", Title: "M"}},
+	}
+
+	var output bytes.Buffer
+	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true, ShowHourLabels: true, Locale: "cs"}); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	got := output.String()
+	for _, want := range []string{`<html lang="cs">`, "07:00-19:00", `<time datetime="08:00">08:00</time>-<time datetime="08:45">08:45</time>`, "Po", "Út", "St", "Čt", "Pá", "So", "Ne"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("rendered HTML missing %q:\n%s", want, got)
 		}
 	}
 }

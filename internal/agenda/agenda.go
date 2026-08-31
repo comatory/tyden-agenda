@@ -8,13 +8,15 @@ import (
 	"strings"
 )
 
-const usage = `Usage: tyden --data <path-to-data.json> [--show <option>] [--hide <option>]
+const usage = `Usage: tyden --data <path-to-data.json> [--locale <tag>] [--show <option>] [--hide <option>]
 
 Create a printable weekly agenda HTML document.
 
 Flags:
   --data string
         path to agenda JSON data
+  --locale string
+        render locale. Supported: en, cs (default en)
   --show string
         optional render layer to show. Repeat or comma-separate. Supported: hour-labels
   --hide string
@@ -32,6 +34,7 @@ func Run(args []string, stdout, stderr io.Writer) error {
 	}
 
 	dataPath := flags.String("data", "", "path to agenda JSON data")
+	locale := flags.String("locale", "en", "render locale")
 	show := newShowFlags()
 	flags.Var(show, "show", "optional render layer to show")
 	hide := newHideFlags()
@@ -55,7 +58,12 @@ func Run(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	return Render(data, stdout, renderOptions(show, hide))
+	options, err := renderOptions(show, hide, *locale)
+	if err != nil {
+		return err
+	}
+
+	return Render(data, stdout, options)
 }
 
 type showFlags map[string]bool
@@ -110,9 +118,16 @@ func (flags hideFlags) Set(value string) error {
 	return nil
 }
 
-func renderOptions(show showFlags, hide hideFlags) RenderOptions {
+func renderOptions(show showFlags, hide hideFlags, locale string) (RenderOptions, error) {
+	locale = strings.TrimSpace(locale)
+	resolvedLocale, err := newLocale(locale)
+	if err != nil {
+		return RenderOptions{}, err
+	}
+
 	return RenderOptions{
 		ShowHourLabels: show["hour-labels"],
 		ShowSlotTimes:  !hide["slot-times"],
-	}
+		Locale:         resolvedLocale.tagValue(),
+	}, nil
 }

@@ -96,7 +96,7 @@ func TestRunShowsSlotTimesByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := stdout.String(); !strings.Contains(got, "08:00-08:45") {
+	if got := stdout.String(); !strings.Contains(got, `<time datetime="08:00">08:00</time>-<time datetime="08:45">08:45</time>`) {
 		t.Fatalf("stdout = %q, want slot time", got)
 	}
 }
@@ -115,7 +115,7 @@ func TestRunHidesUnpopulatedSlotTimes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := stdout.String(); strings.Contains(got, "08:00-08:45") {
+	if got := stdout.String(); strings.Contains(got, `<time datetime="08:00">08:00</time>`) {
 		t.Fatalf("stdout contains unpopulated slot time: %q", got)
 	}
 }
@@ -134,7 +134,7 @@ func TestRunHidesSlotTimes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := stdout.String(); strings.Contains(got, "08:00-08:45") {
+	if got := stdout.String(); strings.Contains(got, `<time datetime="08:00">08:00</time>`) {
 		t.Fatalf("stdout contains slot time: %q", got)
 	}
 }
@@ -153,7 +153,7 @@ func TestRunHidesCommaSeparatedOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := stdout.String(); strings.Contains(got, "08:00-08:45") {
+	if got := stdout.String(); strings.Contains(got, `<time datetime="08:00">08:00</time>`) {
 		t.Fatalf("stdout contains slot time: %q", got)
 	}
 }
@@ -173,6 +173,46 @@ func TestRunShowsHourLabels(t *testing.T) {
 	}
 	if got := stdout.String(); !strings.Contains(got, "<span>07:00</span>") {
 		t.Fatalf("stdout = %q, want hour labels", got)
+	}
+}
+
+func TestRunRendersCzechLocale(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	dataPath := writeTestData(t, `{
+  "timeRange": { "start": "07:00", "end": "19:00" },
+  "days": ["mon", "tue"],
+  "people": [{ "id": "p1", "label": "P1" }],
+  "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
+  "events": [{ "person": "p1", "day": "mon", "start": "08:00", "end": "08:45", "title": "Cj" }]
+}`)
+
+	err := Run([]string{"--data", dataPath, "--locale", "cs"}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	for _, want := range []string{`<html lang="cs">`, "Po", "Út", `<time datetime="08:00">08:00</time>-<time datetime="08:45">08:45</time>`} {
+		if got := stdout.String(); !strings.Contains(got, want) {
+			t.Fatalf("stdout = %q, want %q", got, want)
+		}
+	}
+}
+
+func TestRunRejectsUnsupportedLocale(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	dataPath := writeTestData(t, `{
+  "timeRange": { "start": "07:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
+  "events": []
+}`)
+
+	err := Run([]string{"--data", dataPath, "--locale", "de"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("Run() error = nil, want error")
+	}
+	if got := err.Error(); !strings.Contains(got, "unsupported locale") {
+		t.Fatalf("error = %q, want unsupported locale", got)
 	}
 }
 

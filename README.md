@@ -48,6 +48,35 @@ tyden --data <path-to-data.json> > agenda.html
 
 You can then open the `agenda.html` in any browser. The HTML is already styled and ready to be printed.
 
+Use `--locale` to render localized day names. Locale values use standard BCP 47 language tags. Default is `en`.
+
+```shell
+tyden --data <path-to-data.json> --locale cs > agenda.html
+```
+
+Supported locales:
+
+| Value | Description |
+| --- | --- |
+| `en` | English day labels. Default. |
+| `cs` | Czech day labels. |
+
+### Adding translations
+
+Translations live in `internal/agenda/locale.go`.
+
+To add a locale:
+
+1. Add a new case in `newLocale`.
+2. Add a translation function, for example `germanTranslations`.
+3. Return only that locale's map from the new case.
+4. Add the locale to this README and CLI usage text.
+5. Add or update render tests.
+
+Translation keys use dot notation. Day labels use `day.mon`, `day.tue`, `day.wed`, `day.thu`, `day.fri`, `day.sat`, `day.sun`.
+
+Do not create one global map with all languages. Keep translations behind per-locale functions so only the selected locale map is instantiated at runtime.
+
 Optional render layers are enabled with `--show`. Default render layers are disabled with `--hide`. Repeat the flag or comma-separate values:
 
 ```shell
