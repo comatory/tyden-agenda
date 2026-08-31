@@ -210,6 +210,30 @@ func TestRenderStacksOverlappingEvents(t *testing.T) {
 	}
 }
 
+func TestRenderShrinksLongEventText(t *testing.T) {
+	data := Data{
+		Days:      []Day{"mon"},
+		People:    []Person{{ID: "p1", Label: "P1"}},
+		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
+		Events:    []Event{{Person: "p1", Day: "mon", Start: "13:40", End: "13:55", Title: "Logopedie", Subtitle: "dlouhy text", Note: "note"}},
+	}
+
+	var output bytes.Buffer
+	if err := Render(data, &output, RenderOptions{}); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	got := output.String()
+	for _, want := range []string{
+		"--title-size: 5.0pt;",
+		"--subtitle-size: 4.0pt;",
+		"--note-size: 3.0pt;",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("rendered HTML missing %q:\n%s", want, got)
+		}
+	}
+}
+
 func TestRenderDefaultsDays(t *testing.T) {
 	data := Data{
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},

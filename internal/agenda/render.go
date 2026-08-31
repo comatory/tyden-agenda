@@ -11,6 +11,13 @@ import (
 
 var defaultDays = []Day{"mon", "tue", "wed", "thu", "fri"}
 
+const (
+	agendaGridWidthMM = 257.0
+	eventPaddingMM    = 2.0
+	defaultEventTop   = 32.0
+	defaultEventScale = 56.0
+)
+
 type RenderOptions struct {
 	ShowHourLabels bool
 	ShowSlotTimes  bool
@@ -60,6 +67,11 @@ type eventView struct {
 	Subtitle string
 	Note     string
 	Style    string
+	TitlePt  string
+	SubPt    string
+	NotePt   string
+	PadY     string
+	PadX     string
 	Left     string
 	Width    string
 	Top      string
@@ -147,6 +159,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 
 		eventLeft := percent(eventStart-start, end-start)
 		eventEndLeft := percent(eventEnd-start, end-start)
+		eventWidthMM := float64(eventEnd-eventStart) / float64(end-start) * agendaGridWidthMM
 
 		events = append(events, eventView{
 			Person:   event.Person,
@@ -158,6 +171,11 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			Subtitle: event.Subtitle,
 			Note:     event.Note,
 			Style:    eventStyle(event.Style),
+			TitlePt:  textSize(event.Title, eventWidthMM, 11, 5),
+			SubPt:    textSize(event.Subtitle, eventWidthMM, 7, 4),
+			NotePt:   textSize(event.Note, eventWidthMM*0.35, 6, 3),
+			PadY:     "2mm",
+			PadX:     "1mm",
 			Left:     eventLeft,
 			Width:    percent(eventEnd-eventStart, end-start),
 		})
@@ -220,6 +238,25 @@ func parseMinutes(value string) (int, error) {
 
 func percent(value, total int) string {
 	return fmt.Sprintf("%.4f%%", float64(value)/float64(total)*100)
+}
+
+func textSize(text string, boxWidthMM, maxPt, minPt float64) string {
+	if text == "" {
+		return fmt.Sprintf("%.1fpt", maxPt)
+	}
+	availableMM := boxWidthMM - eventPaddingMM
+	if availableMM <= 0 {
+		return fmt.Sprintf("%.1fpt", minPt)
+	}
+	// Approximate bold sans-serif glyph width at 0.38em. Keep boxes exact-size; shrink text instead.
+	fitPt := availableMM / (float64(len([]rune(text))) * 0.38 * 0.3528)
+	if fitPt > maxPt {
+		fitPt = maxPt
+	}
+	if fitPt < minPt {
+		fitPt = minPt
+	}
+	return fmt.Sprintf("%.1fpt", fitPt)
 }
 
 func dayLabel(day Day) string {
@@ -316,14 +353,42 @@ func assignClusterLanes(events []eventView, indexes []int) {
 
 	total := len(laneEnds)
 	for _, index := range indexes {
-		events[index].Top, events[index].Height = stackPosition(lanes[index], total)
+		top, height, scale := stackPosition(lanes[index], total)
+		events[index].Top = top
+		events[index].Height = height
+		events[index].TitlePt = scalePt(events[index].TitlePt, scale, 5)
+		events[index].SubPt = scalePt(events[index].SubPt, scale, 4)
+		events[index].NotePt = scalePt(events[index].NotePt, scale, 3)
+		events[index].PadY = scaleMM(2, scale, 0.4)
+		events[index].PadX = scaleMM(1, scale, 0.5)
 	}
 }
 
-func stackPosition(index, total int) (string, string) {
+func stackPosition(index, total int) (string, string, float64) {
 	height := 100.0 / float64(total)
-	top := 32.0 + float64(index)*height*0.56
-	return fmt.Sprintf("%.4f%%", top), fmt.Sprintf("%.4f%%", height*0.56)
+	scaledHeight := height * defaultEventScale / 100
+	top := defaultEventTop + float64(index)*scaledHeight
+	return fmt.Sprintf("%.4f%%", top), fmt.Sprintf("%.4f%%", scaledHeight), scaledHeight / defaultEventScale
+}
+
+func scalePt(value string, scale, minPt float64) string {
+	pt, err := strconv.ParseFloat(strings.TrimSuffix(value, "pt"), 64)
+	if err != nil {
+		return value
+	}
+	pt *= scale
+	if pt < minPt {
+		pt = minPt
+	}
+	return fmt.Sprintf("%.1fpt", pt)
+}
+
+func scaleMM(value, scale, minMM float64) string {
+	mm := value * scale
+	if mm < minMM {
+		mm = minMM
+	}
+	return fmt.Sprintf("%.1fmm", mm)
 }
 
 func minuteLines(start, end int) []minuteLineView {
@@ -402,12 +467,12 @@ body { padding: 6mm; overflow: hidden; }
 .slot-label { position: relative; z-index: 4; display: inline-block; background: #fff; padding: 0 0.5mm; }
 .slot small { font-size: 6pt; }
 .event-boundary { position: absolute; left: var(--left); top: 0; height: 100%; border-left: 1px dashed #777; pointer-events: none; z-index: 2; }
-.event { container-type: inline-size; position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); border: 1px solid #555; background: #ddd; padding: 2mm 1mm 1mm; text-align: center; overflow: hidden; z-index: 3; }
+.event { position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); border: 1px solid #555; background: #ddd; padding: var(--pad-y) var(--pad-x) 0; text-align: center; overflow: hidden; z-index: 3; }
 .event.muted { background: #eee; color: #444; }
 .event.outline { background: #fff; }
-.event-title { font-size: clamp(7pt, calc(5.5pt + 8cqw), 11pt); font-weight: 700; line-height: 1.1; white-space: nowrap; }
-.event-subtitle { font-size: clamp(5pt, calc(4.25pt + 4cqw), 7pt); margin-top: 0.5mm; white-space: nowrap; }
-.event-note { position: absolute; right: 1mm; top: 1mm; max-width: 35%; font-size: clamp(4pt, calc(3.25pt + 3cqw), 6pt); white-space: nowrap; }
+.event-title { font-size: var(--title-size); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.event-subtitle { font-size: var(--subtitle-size); margin-top: 0.5mm; white-space: nowrap; }
+.event-note { position: absolute; right: 1mm; top: 1mm; max-width: 35%; font-size: var(--note-size); white-space: nowrap; }
 .event-time { position: absolute; left: var(--left); width: var(--width); top: 13%; text-align: center; font-size: 7pt; font-weight: 700; z-index: 3; }
 .event-time span { display: inline-block; background: #fff; padding: 0 0.5mm; }
 @media print {
@@ -433,7 +498,7 @@ body { padding: 6mm; overflow: hidden; }
         <section class="person-grid">
           {{ range $.MinuteLines }}<div class="line" data-marker-type="hour-guide" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};"><span>{{ .Time }}</span></div>{{ end }}{{ end }}{{ end }}
-          {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
+          {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }}; --title-size: {{ .TitlePt }}; --subtitle-size: {{ .SubPt }}; --note-size: {{ .NotePt }}; --pad-y: {{ .PadY }}; --pad-x: {{ .PadX }};">
             {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
             <div class="event-title">{{ .Title }}</div>
             {{ if .Subtitle }}<div class="event-subtitle">{{ .Subtitle }}</div>{{ end }}
