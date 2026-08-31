@@ -63,7 +63,8 @@ func TestRunRendersData(t *testing.T) {
 	var stderr bytes.Buffer
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
-  "events": [{ "day": "mon", "start": "08:00", "end": "08:45", "title": "Cj" }]
+  "people": [{ "id": "p1", "label": "P1" }],
+  "events": [{ "person": "p1", "day": "mon", "start": "08:00", "end": "08:45", "title": "Cj" }]
 }`)
 
 	err := Run([]string{"--data", dataPath}, &stdout, &stderr)
@@ -86,8 +87,9 @@ func TestRunShowsSlotTimesByDefault(t *testing.T) {
 	var stderr bytes.Buffer
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
   "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
-  "events": [{ "day": "mon", "start": "08:00", "end": "08:45", "title": "Cj" }]
+  "events": [{ "person": "p1", "day": "mon", "start": "08:00", "end": "08:45", "title": "Cj" }]
 }`)
 
 	err := Run([]string{"--data", dataPath}, &stdout, &stderr)
@@ -104,6 +106,7 @@ func TestRunHidesUnpopulatedSlotTimes(t *testing.T) {
 	var stderr bytes.Buffer
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
   "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
   "events": []
 }`)
@@ -122,6 +125,7 @@ func TestRunHidesSlotTimes(t *testing.T) {
 	var stderr bytes.Buffer
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
   "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
   "events": []
 }`)
@@ -140,6 +144,7 @@ func TestRunHidesCommaSeparatedOptions(t *testing.T) {
 	var stderr bytes.Buffer
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
   "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
   "events": []
 }`)
@@ -158,6 +163,7 @@ func TestRunShowsHourLabels(t *testing.T) {
 	var stderr bytes.Buffer
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
   "events": []
 }`)
 

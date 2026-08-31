@@ -14,9 +14,11 @@ func TestLoadData(t *testing.T) {
   "week": "2026-W36",
   "timezone": "Europe/Prague",
   "days": ["mon", "tue"],
+  "people": [{ "id": "p1", "label": "P1" }],
   "timeRange": { "start": "07:00", "end": "19:00" },
   "slots": [{ "label": "1", "start": "08:00", "end": "08:45" }],
   "events": [{
+    "person": "p1",
     "day": "mon",
     "start": "08:00",
     "end": "08:45",
@@ -50,6 +52,9 @@ func TestLoadData(t *testing.T) {
 	if data.TimeRange.Start != "07:00" || data.TimeRange.End != "19:00" {
 		t.Fatalf("TimeRange = %#v", data.TimeRange)
 	}
+	if len(data.People) != 1 || data.People[0].ID != "p1" || data.People[0].Label != "P1" {
+		t.Fatalf("People = %#v", data.People)
+	}
 	if len(data.Slots) != 1 || data.Slots[0].Label != "1" {
 		t.Fatalf("Slots = %#v", data.Slots)
 	}
@@ -64,6 +69,7 @@ func TestLoadData(t *testing.T) {
 func TestLoadDataRejectsUnknownFields(t *testing.T) {
 	dataPath := writeTestData(t, `{
   "timeRange": { "start": "07:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
   "events": [],
   "unknown": true
 }`)

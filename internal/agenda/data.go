@@ -12,12 +12,18 @@ type Data struct {
 	Week      string    `json:"week,omitempty"`
 	Timezone  string    `json:"timezone,omitempty"`
 	Days      []Day     `json:"days,omitempty"`
+	People    []Person  `json:"people"`
 	TimeRange TimeRange `json:"timeRange"`
 	Slots     []Slot    `json:"slots,omitempty"`
 	Events    []Event   `json:"events"`
 }
 
 type Day string
+
+type Person struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
 
 type TimeRange struct {
 	Start string `json:"start"`
@@ -31,6 +37,7 @@ type Slot struct {
 }
 
 type Event struct {
+	Person   string `json:"person"`
 	Day      Day    `json:"day"`
 	Start    string `json:"start"`
 	End      string `json:"end"`

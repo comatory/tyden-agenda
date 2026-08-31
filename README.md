@@ -157,6 +157,13 @@ Time values use 24-hour `HH:MM` format.
 
 Day values are `mon`, `tue`, `wed`, `thu`, `fri`, `sat`, `sun`.
 
+Person fields:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `id` | yes | Stable identifier used by events. |
+| `label` | yes | Short label printed in the day/person row header. |
+
 Event fields:
 
 | Field | Required | Description |

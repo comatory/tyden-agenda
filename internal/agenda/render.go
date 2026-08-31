@@ -36,13 +36,20 @@ type renderView struct {
 }
 
 type dayView struct {
-	Key   Day
+	Day    Day
+	Label  string
+	Row    int
+	People []personView
+	Slots  []daySlotView
+}
+
+type personView struct {
+	ID    string
 	Label string
-	Row   int
-	Slots []daySlotView
 }
 
 type eventView struct {
+	Person   string
 	Day      Day
 	Time     string
 	Title    string
@@ -53,7 +60,6 @@ type eventView struct {
 	Width    string
 	Top      string
 	Height   string
-	InSlot   bool
 }
 
 type slotView struct {
@@ -135,6 +141,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 		}
 
 		events = append(events, eventView{
+			Person:   event.Person,
 			Day:      event.Day,
 			Time:     event.Start + "-" + event.End,
 			Title:    event.Title,
@@ -145,14 +152,16 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			Width:    percent(eventEnd-eventStart, end-start),
 			Top:      stackTop,
 			Height:   stackHeight,
-			InSlot:   inSlot(slots, eventStart, eventEnd, start, end),
 		})
 	}
 
 	dayViews := make([]dayView, 0, len(days))
 	for index, day := range days {
-		row := index + 2
-		dayViews = append(dayViews, dayView{Key: day, Label: dayLabel(day), Row: row, Slots: daySlots(slots, events, day)})
+		people := make([]personView, 0, len(data.People))
+		for _, person := range data.People {
+			people = append(people, personView(person))
+		}
+		dayViews = append(dayViews, dayView{Day: day, Label: dayLabel(day), Row: index + 2, People: people, Slots: daySlots(slots, events, day)})
 	}
 
 	title := data.Title
@@ -232,7 +241,7 @@ func eventStyle(style string) string {
 
 func stackPosition(stack Stack) (string, string, error) {
 	if stack.Total == 0 && stack.Index == 0 {
-		return "20.0000%", "72.0000%", nil
+		return "26.0000%", "62.0000%", nil
 	}
 	if stack.Total <= 0 {
 		return "", "", fmt.Errorf("total must be positive")
@@ -242,8 +251,8 @@ func stackPosition(stack Stack) (string, string, error) {
 	}
 
 	height := 100.0 / float64(stack.Total)
-	top := 20.0 + float64(stack.Index)*height*0.72
-	return fmt.Sprintf("%.4f%%", top), fmt.Sprintf("%.4f%%", height*0.72), nil
+	top := 26.0 + float64(stack.Index)*height*0.62
+	return fmt.Sprintf("%.4f%%", top), fmt.Sprintf("%.4f%%", height*0.62), nil
 }
 
 func minuteLines(start, end int) []minuteLineView {
@@ -284,19 +293,8 @@ func daySlots(slots []slotView, events []eventView, day Day) []daySlotView {
 	return daySlots
 }
 
-func inSlot(slots []slotView, eventStart, eventEnd, rangeStart, rangeEnd int) bool {
-	eventLeft := percent(eventStart-rangeStart, rangeEnd-rangeStart)
-	eventWidth := percent(eventEnd-eventStart, rangeEnd-rangeStart)
-	for _, slot := range slots {
-		if slot.Left == eventLeft && slot.Width == eventWidth {
-			return true
-		}
-	}
-	return false
-}
-
 var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap{
-	"sameDay": func(a, b Day) bool { return a == b },
+	"samePerson": func(event eventView, day Day, person string) bool { return event.Day == day && event.Person == person },
 }).Parse(`<!doctype html>
 <html lang="en">
 <head>
@@ -307,39 +305,51 @@ var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap
 @page { size: A4 landscape; margin: 10mm; }
 * { box-sizing: border-box; }
 body { margin: 0; color: #111; font-family: Arial, Helvetica, sans-serif; }
-.agenda { display: grid; grid-template-columns: 22mm 1fr; grid-template-rows: 18mm repeat({{ len .Days }}, 1fr); height: 190mm; border: 1px solid #777; }
+.agenda { display: grid; grid-template-columns: 28mm 1fr; grid-template-rows: 18mm repeat({{ len .Days }}, 1fr); height: 190mm; border: 1px solid #777; }
 .title { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: end; padding: 0 3mm 2mm; border-bottom: 1px solid #777; font-size: 15pt; font-weight: 700; }
 .range { font-size: 8pt; font-weight: 400; }
-.day-label { padding: 2mm; border-right: 1px solid #777; border-bottom: 1px solid #aaa; font-weight: 700; }
-.day-grid { position: relative; border-bottom: 1px solid #aaa; background: repeating-linear-gradient(90deg, #f4f4f4 0, #f4f4f4 3mm, #fff 3mm, #fff 6mm); }
+.day-label { display: grid; grid-template-columns: 12mm 1fr; grid-template-rows: repeat({{ len (index .Days 0).People }}, 1fr); border-right: 1px solid #777; border-bottom: 1px solid #aaa; }
+.day-name { grid-row: 1 / -1; padding: 2mm; font-weight: 700; border-right: 1px solid #ddd; }
+.day-person { display: flex; align-items: center; padding: 1mm; border-bottom: 1px solid #ddd; font-size: 8pt; }
+.day-person:last-child { border-bottom: 0; }
+.day-grid { position: relative; display: grid; grid-template-rows: repeat({{ len (index .Days 0).People }}, 1fr); border-bottom: 1px solid #aaa; }
+.person-grid { position: relative; border-bottom: 1px solid #ddd; background: repeating-linear-gradient(90deg, #f4f4f4 0, #f4f4f4 3mm, #fff 3mm, #fff 6mm); }
+.person-grid:last-child { border-bottom: 0; }
 .line { position: absolute; left: var(--left); height: 100%; border-left: 1px solid #ccc; font-size: 6pt; color: #555; }
 .line span { position: absolute; top: 1mm; transform: translateX(-50%); background: #fff; padding: 0 0.5mm; white-space: nowrap; }
-.slot { position: absolute; left: var(--left); width: var(--width); top: 0; height: 7mm; border-right: 1px dashed #777; border-left: 1px dashed #bbb; text-align: center; font-size: 7pt; font-weight: 700; pointer-events: none; }
+.slot { position: absolute; left: var(--left); width: var(--width); top: 0; height: 7mm; border-right: 1px dashed #777; border-left: 1px dashed #bbb; text-align: center; font-size: 7pt; font-weight: 700; pointer-events: none; z-index: 2; }
 .slot small { font-size: 6pt; }
-.event { position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); min-width: 18mm; border: 1px solid #555; background: #ddd; padding: 1mm; text-align: center; overflow: hidden; }
+.event { position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); min-width: 18mm; border: 1px solid #555; background: #ddd; padding: 2mm 1mm 1mm; text-align: center; overflow: hidden; }
 .event.muted { background: #eee; color: #444; }
 .event.outline { background: #fff; }
 .event-title { font-size: 12pt; font-weight: 700; line-height: 1.1; }
 .event-subtitle { font-size: 7pt; margin-top: 1mm; }
 .event-note { position: absolute; right: 1mm; top: 1mm; font-size: 6pt; }
-.event-time { position: absolute; left: var(--left); width: var(--width); top: 11%; text-align: center; font-size: 7pt; font-weight: 700; }
+.event-time { position: absolute; left: var(--left); width: var(--width); top: 15%; text-align: center; font-size: 7pt; font-weight: 700; z-index: 3; }
 @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head>
 <body>
 <main class="agenda">
   <header class="title"><span>{{ .Title }}</span><span class="range">{{ .TimeStart }}-{{ .TimeEnd }}</span></header>
-  {{ range .Days }}{{ $day := .Key }}
-    <div class="day-label" style="grid-row: {{ .Row }};">{{ .Label }}</div>
+  {{ range .Days }}{{ $day := .Day }}
+    <div class="day-label" style="grid-row: {{ .Row }};">
+      <div class="day-name">{{ .Label }}</div>
+      {{ range .People }}<div class="day-person">{{ .Label }}</div>{{ end }}
+    </div>
     <section class="day-grid" style="grid-row: {{ .Row }};">
-      {{ range $.MinuteLines }}<div class="line" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
-      {{ range .Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Label }}{{ if and $.Options.ShowSlotTimes .Populated }}<br><small>{{ .Start }}-{{ .End }}</small>{{ end }}</div>{{ end }}
-      {{ range $.Events }}{{ if and (sameDay .Day $day) (not .InSlot) }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Time }}</div>{{ end }}{{ end }}
-      {{ range $.Events }}{{ if sameDay .Day $day }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
-        {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
-        <div class="event-title">{{ .Title }}</div>
-        {{ if .Subtitle }}<div class="event-subtitle">{{ .Subtitle }}</div>{{ end }}
-      </article>{{ end }}{{ end }}
+      {{ range .Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Label }}</div>{{ end }}
+      {{ range .People }}{{ $person := .ID }}
+        <section class="person-grid">
+          {{ range $.MinuteLines }}<div class="line" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
+          {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Time }}</div>{{ end }}{{ end }}{{ end }}
+          {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
+            {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
+            <div class="event-title">{{ .Title }}</div>
+            {{ if .Subtitle }}<div class="event-subtitle">{{ .Subtitle }}</div>{{ end }}
+          </article>{{ end }}{{ end }}
+        </section>
+      {{ end }}
     </section>
   {{ end }}
 </main>

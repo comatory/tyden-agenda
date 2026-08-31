@@ -11,9 +11,11 @@ func TestRender(t *testing.T) {
 		Title:     "School week",
 		Week:      "2026-W36",
 		Days:      []Day{"mon", "tue"},
+		People:    []Person{{ID: "p1", Label: "P1"}},
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
 		Slots:     []Slot{{Label: "1", Start: "08:00", End: "08:45"}},
 		Events: []Event{{
+			Person:   "p1",
 			Day:      "mon",
 			Start:    "08:00",
 			End:      "08:45",
@@ -35,12 +37,13 @@ func TestRender(t *testing.T) {
 		"School week 2026-W36",
 		"07:00-19:00",
 		"Mon",
+		"P1",
 		"Tue",
 		"Cj",
 		"FrE",
 		"1C",
 		"08:00-08:45",
-		"--top: 56.0000%; --height: 36.0000%;",
+		"--top: 57.0000%; --height: 31.0000%;",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("rendered HTML missing %q:\n%s", want, html)
@@ -48,8 +51,9 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func TestRenderHidesUnpopulatedSlotTimes(t *testing.T) {
+func TestRenderHidesSlotTimesWhenNoEvents(t *testing.T) {
 	data := Data{
+		People:    []Person{{ID: "p1", Label: "P1"}},
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
 		Slots:     []Slot{{Label: "1", Start: "08:00", End: "08:45"}},
 		Events:    []Event{},
@@ -67,12 +71,13 @@ func TestRenderHidesUnpopulatedSlotTimes(t *testing.T) {
 func TestRenderHidesSlotLabelsAfterLastPopulatedSlot(t *testing.T) {
 	data := Data{
 		Days:      []Day{"mon"},
+		People:    []Person{{ID: "p1", Label: "P1"}},
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
 		Slots: []Slot{
 			{Label: "1", Start: "08:00", End: "08:45"},
 			{Label: "2", Start: "08:55", End: "09:40"},
 		},
-		Events: []Event{{Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
+		Events: []Event{{Person: "p1", Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
 	}
 
 	var output bytes.Buffer
@@ -84,12 +89,13 @@ func TestRenderHidesSlotLabelsAfterLastPopulatedSlot(t *testing.T) {
 	}
 }
 
-func TestRenderShowsTimeForEventOutsideSlot(t *testing.T) {
+func TestRenderShowsTimeAboveEvent(t *testing.T) {
 	data := Data{
 		Days:      []Day{"thu"},
+		People:    []Person{{ID: "p1", Label: "P1"}},
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
 		Slots:     []Slot{{Label: "1", Start: "08:00", End: "08:45"}},
-		Events:    []Event{{Day: "thu", Start: "17:30", End: "18:30", Title: "Anglictina"}},
+		Events:    []Event{{Person: "p1", Day: "thu", Start: "17:30", End: "18:30", Title: "Anglictina"}},
 	}
 
 	var output bytes.Buffer
@@ -101,12 +107,58 @@ func TestRenderShowsTimeForEventOutsideSlot(t *testing.T) {
 	}
 }
 
-func TestRenderHidesTimeForEventInsideSlot(t *testing.T) {
+func TestRenderMultiplePeople(t *testing.T) {
 	data := Data{
 		Days:      []Day{"mon"},
+		People:    []Person{{ID: "p1", Label: "P1"}, {ID: "p2", Label: "P2"}},
+		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
+		Events:    []Event{{Person: "p2", Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
+	}
+
+	var output bytes.Buffer
+	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	html := output.String()
+	for _, want := range []string{"P1", "P2", "Cj"} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("rendered HTML missing %q:\n%s", want, html)
+		}
+	}
+	if got := strings.Count(html, "<div class=\"day-name\">Mon</div>"); got != 1 {
+		t.Fatalf("Mon label count = %d, want 1:\n%s", got, html)
+	}
+}
+
+func TestRenderSlotLabelsOncePerDay(t *testing.T) {
+	data := Data{
+		Days:      []Day{"mon"},
+		People:    []Person{{ID: "p1", Label: "P1"}, {ID: "p2", Label: "P2"}},
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
 		Slots:     []Slot{{Label: "1", Start: "08:00", End: "08:45"}},
-		Events:    []Event{{Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
+		Events:    []Event{{Person: "p1", Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
+	}
+
+	var output bytes.Buffer
+	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if got := strings.Count(output.String(), "class=\"slot\""); got != 1 {
+		t.Fatalf("slot count = %d, want 1:\n%s", got, output.String())
+	}
+	if got := output.String(); !strings.Contains(got, "08:00-08:45") {
+		t.Fatalf("rendered HTML missing populated slot time:\n%s", got)
+	}
+}
+
+func TestRenderHidesEventTimesWhenConfigured(t *testing.T) {
+	data := Data{
+		Days:      []Day{"mon"},
+		People:    []Person{{ID: "p1", Label: "P1"}},
+		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
+		Slots:     []Slot{{Label: "1", Start: "08:00", End: "08:45"}},
+		Events:    []Event{{Person: "p1", Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
 	}
 
 	var output bytes.Buffer
@@ -114,19 +166,21 @@ func TestRenderHidesTimeForEventInsideSlot(t *testing.T) {
 		t.Fatalf("Render() error = %v", err)
 	}
 	if got := output.String(); strings.Contains(got, "08:00-08:45") {
-		t.Fatalf("rendered HTML contains lesson event time:\n%s", got)
+		t.Fatalf("rendered HTML contains event time:\n%s", got)
 	}
 }
 
 func TestRenderRejectsInvalidStack(t *testing.T) {
 	data := Data{
+		People:    []Person{{ID: "p1", Label: "P1"}},
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
 		Events: []Event{{
-			Day:   "mon",
-			Start: "08:00",
-			End:   "08:45",
-			Title: "Cj",
-			Stack: Stack{Index: 2, Total: 2},
+			Person: "p1",
+			Day:    "mon",
+			Start:  "08:00",
+			End:    "08:45",
+			Title:  "Cj",
+			Stack:  Stack{Index: 2, Total: 2},
 		}},
 	}
 
@@ -142,7 +196,8 @@ func TestRenderRejectsInvalidStack(t *testing.T) {
 func TestRenderDefaultsDays(t *testing.T) {
 	data := Data{
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
-		Events:    []Event{{Day: "fri", Start: "08:00", End: "08:45", Title: "M"}},
+		People:    []Person{{ID: "p1", Label: "P1"}},
+		Events:    []Event{{Person: "p1", Day: "fri", Start: "08:00", End: "08:45", Title: "M"}},
 	}
 
 	var output bytes.Buffer
@@ -160,6 +215,7 @@ func TestRenderDefaultsDays(t *testing.T) {
 func TestRenderRejectsInvalidTimes(t *testing.T) {
 	data := Data{
 		TimeRange: TimeRange{Start: "19:00", End: "07:00"},
+		People:    []Person{{ID: "p1", Label: "P1"}},
 		Events:    []Event{},
 	}
 
