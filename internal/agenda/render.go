@@ -409,6 +409,7 @@ body { padding: 6mm; overflow: hidden; }
 .event-subtitle { font-size: clamp(5pt, calc(4.25pt + 4cqw), 7pt); margin-top: 0.5mm; white-space: nowrap; }
 .event-note { position: absolute; right: 1mm; top: 1mm; max-width: 35%; font-size: clamp(4pt, calc(3.25pt + 3cqw), 6pt); white-space: nowrap; }
 .event-time { position: absolute; left: var(--left); width: var(--width); top: 13%; text-align: center; font-size: 7pt; font-weight: 700; z-index: 3; }
+.event-time span { display: inline-block; background: #fff; padding: 0 0.5mm; }
 @media print {
   html, body { width: 297mm; height: 210mm; min-height: 0; }
   body { padding: 6mm; overflow: hidden; }
@@ -431,7 +432,7 @@ body { padding: 6mm; overflow: hidden; }
       {{ range .People }}{{ $person := .ID }}
         <section class="person-grid">
           {{ range $.MinuteLines }}<div class="line" data-marker-type="hour-guide" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
-          {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Time }}</div>{{ end }}{{ end }}{{ end }}
+          {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};"><span>{{ .Time }}</span></div>{{ end }}{{ end }}{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
             {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
             <div class="event-title">{{ .Title }}</div>
