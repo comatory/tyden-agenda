@@ -26,6 +26,12 @@ Format:
 go fmt ./...
 ```
 
+Test:
+
+```shell
+go test ./...
+```
+
 Lint:
 
 ```shell

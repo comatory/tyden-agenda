@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	if err := agenda.Run(os.Args[1:], os.Stdout); err != nil {
+	if err := agenda.Run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "tyden: %v\n", err)
 		os.Exit(1)
 	}
