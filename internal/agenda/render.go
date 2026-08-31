@@ -31,17 +31,17 @@ type renderView struct {
 	Days        []dayView
 	Slots       []slotView
 	Events      []eventView
-	Boundaries  []eventBoundaryView
 	MinuteLines []minuteLineView
 	Options     RenderOptions
 }
 
 type dayView struct {
-	Day    Day
-	Label  string
-	Row    int
-	People []personView
-	Slots  []daySlotView
+	Day        Day
+	Label      string
+	Row        int
+	People     []personView
+	Slots      []daySlotView
+	Boundaries []eventBoundaryView
 }
 
 type personView struct {
@@ -64,9 +64,8 @@ type eventView struct {
 }
 
 type eventBoundaryView struct {
-	Person string
-	Day    Day
-	Left   string
+	Day  Day
+	Left string
 }
 
 type slotView struct {
@@ -165,8 +164,8 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			Height:   stackHeight,
 		})
 		boundaries = append(boundaries,
-			eventBoundaryView{Person: event.Person, Day: event.Day, Left: eventLeft},
-			eventBoundaryView{Person: event.Person, Day: event.Day, Left: eventEndLeft},
+			eventBoundaryView{Day: event.Day, Left: eventLeft},
+			eventBoundaryView{Day: event.Day, Left: eventEndLeft},
 		)
 	}
 
@@ -176,7 +175,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 		for _, person := range data.People {
 			people = append(people, personView(person))
 		}
-		dayViews = append(dayViews, dayView{Day: day, Label: dayLabel(day), Row: index + 2, People: people, Slots: daySlots(slots, events, day)})
+		dayViews = append(dayViews, dayView{Day: day, Label: dayLabel(day), Row: index + 2, People: people, Slots: daySlots(slots, events, day), Boundaries: dayBoundaries(boundaries, day)})
 	}
 
 	title := data.Title
@@ -194,7 +193,6 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 		Days:        dayViews,
 		Slots:       slots,
 		Events:      events,
-		Boundaries:  boundaries,
 		MinuteLines: minuteLines(start, end),
 		Options:     options,
 	}, nil
@@ -309,11 +307,21 @@ func daySlots(slots []slotView, events []eventView, day Day) []daySlotView {
 	return daySlots
 }
 
+func dayBoundaries(boundaries []eventBoundaryView, day Day) []eventBoundaryView {
+	var dayBoundaries []eventBoundaryView
+	seen := map[string]bool{}
+	for _, boundary := range boundaries {
+		if boundary.Day != day || seen[boundary.Left] {
+			continue
+		}
+		seen[boundary.Left] = true
+		dayBoundaries = append(dayBoundaries, boundary)
+	}
+	return dayBoundaries
+}
+
 var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap{
 	"samePerson": func(event eventView, day Day, person string) bool { return event.Day == day && event.Person == person },
-	"sameBoundary": func(boundary eventBoundaryView, day Day, person string) bool {
-		return boundary.Day == day && boundary.Person == person
-	},
 }).Parse(`<!doctype html>
 <html lang="en">
 <head>
@@ -365,11 +373,11 @@ body { padding: 6mm; overflow: hidden; }
       {{ range .People }}<div class="day-person">{{ .Label }}</div>{{ end }}
     </div>
     <section class="day-grid" style="grid-row: {{ .Row }};">
-      {{ range .Slots }}<div class="slot" data-marker-type="slot-boundary" style="--left: {{ .Left }}; --width: {{ .Width }};"><span class="slot-label">{{ .Label }}</span></div>{{ end }}
+      {{ range .Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};"><span class="slot-label">{{ .Label }}</span></div>{{ end }}
+      {{ range .Boundaries }}<div class="event-boundary" data-marker-type="event-boundary" style="--left: {{ .Left }};"></div>{{ end }}
       {{ range .People }}{{ $person := .ID }}
         <section class="person-grid">
           {{ range $.MinuteLines }}<div class="line" data-marker-type="hour-guide" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
-          {{ range $.Boundaries }}{{ if sameBoundary . $day $person }}<div class="event-boundary" data-marker-type="event-boundary" style="--left: {{ .Left }};"></div>{{ end }}{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Time }}</div>{{ end }}{{ end }}{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
             {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
