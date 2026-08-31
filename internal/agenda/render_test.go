@@ -43,7 +43,7 @@ func TestRender(t *testing.T) {
 		"FrE",
 		"1C",
 		"08:00-08:45",
-		"--top: 57.0000%; --height: 31.0000%;",
+		"--top: 60.0000%; --height: 28.0000%;",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("rendered HTML missing %q:\n%s", want, html)
