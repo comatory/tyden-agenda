@@ -318,10 +318,10 @@ body { padding: 6mm; overflow: hidden; }
 .person-grid:last-child { border-bottom: 0; }
 .line { position: absolute; left: var(--left); height: 100%; border-left: 1px solid #ccc; font-size: 6pt; color: #555; }
 .line span { position: absolute; top: 1mm; transform: translateX(-50%); background: #fff; padding: 0 0.5mm; white-space: nowrap; }
-.slot { position: absolute; left: var(--left); width: var(--width); top: 0; height: 100%; border-right: 1px dashed #777; border-left: 1px dashed #bbb; text-align: center; font-size: 7pt; font-weight: 700; pointer-events: none; z-index: 2; }
-.slot-label { display: inline-block; background: #fff; padding: 0 0.5mm; }
+.slot { position: absolute; left: var(--left); width: var(--width); top: 0; height: 100%; border-right: 1px dashed #777; border-left: 1px dashed #bbb; text-align: center; font-size: 7pt; font-weight: 700; pointer-events: none; z-index: 1; }
+.slot-label { position: relative; z-index: 4; display: inline-block; background: #fff; padding: 0 0.5mm; }
 .slot small { font-size: 6pt; }
-.event { position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); min-width: 18mm; border: 1px solid #555; background: #ddd; padding: 2mm 1mm 1mm; text-align: center; overflow: hidden; }
+.event { position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); border: 1px solid #555; background: #ddd; padding: 2mm 1mm 1mm; text-align: center; overflow: hidden; z-index: 3; }
 .event.muted { background: #eee; color: #444; }
 .event.outline { background: #fff; }
 .event-title { font-size: 11pt; font-weight: 700; line-height: 1.1; }
@@ -345,10 +345,10 @@ body { padding: 6mm; overflow: hidden; }
       {{ range .People }}<div class="day-person">{{ .Label }}</div>{{ end }}
     </div>
     <section class="day-grid" style="grid-row: {{ .Row }};">
-      {{ range .Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};"><span class="slot-label">{{ .Label }}</span></div>{{ end }}
+      {{ range .Slots }}<div class="slot" data-marker-type="slot-boundary" style="--left: {{ .Left }}; --width: {{ .Width }};"><span class="slot-label">{{ .Label }}</span></div>{{ end }}
       {{ range .People }}{{ $person := .ID }}
         <section class="person-grid">
-          {{ range $.MinuteLines }}<div class="line" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
+          {{ range $.MinuteLines }}<div class="line" data-marker-type="hour-guide" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Time }}</div>{{ end }}{{ end }}{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
             {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
