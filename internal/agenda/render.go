@@ -31,6 +31,7 @@ type renderView struct {
 	Days        []dayView
 	Slots       []slotView
 	Events      []eventView
+	Boundaries  []eventBoundaryView
 	MinuteLines []minuteLineView
 	Options     RenderOptions
 }
@@ -60,6 +61,12 @@ type eventView struct {
 	Width    string
 	Top      string
 	Height   string
+}
+
+type eventBoundaryView struct {
+	Person string
+	Day    Day
+	Left   string
 }
 
 type slotView struct {
@@ -122,6 +129,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 	}
 
 	events := make([]eventView, 0, len(data.Events))
+	boundaries := make([]eventBoundaryView, 0, len(data.Events)*2)
 	for _, event := range data.Events {
 		eventStart, err := parseMinutes(event.Start)
 		if err != nil {
@@ -140,6 +148,9 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			return renderView{}, fmt.Errorf("event %q stack: %w", event.Title, err)
 		}
 
+		eventLeft := percent(eventStart-start, end-start)
+		eventEndLeft := percent(eventEnd-start, end-start)
+
 		events = append(events, eventView{
 			Person:   event.Person,
 			Day:      event.Day,
@@ -148,11 +159,15 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			Subtitle: event.Subtitle,
 			Note:     event.Note,
 			Style:    eventStyle(event.Style),
-			Left:     percent(eventStart-start, end-start),
+			Left:     eventLeft,
 			Width:    percent(eventEnd-eventStart, end-start),
 			Top:      stackTop,
 			Height:   stackHeight,
 		})
+		boundaries = append(boundaries,
+			eventBoundaryView{Person: event.Person, Day: event.Day, Left: eventLeft},
+			eventBoundaryView{Person: event.Person, Day: event.Day, Left: eventEndLeft},
+		)
 	}
 
 	dayViews := make([]dayView, 0, len(days))
@@ -179,6 +194,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 		Days:        dayViews,
 		Slots:       slots,
 		Events:      events,
+		Boundaries:  boundaries,
 		MinuteLines: minuteLines(start, end),
 		Options:     options,
 	}, nil
@@ -295,6 +311,9 @@ func daySlots(slots []slotView, events []eventView, day Day) []daySlotView {
 
 var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap{
 	"samePerson": func(event eventView, day Day, person string) bool { return event.Day == day && event.Person == person },
+	"sameBoundary": func(boundary eventBoundaryView, day Day, person string) bool {
+		return boundary.Day == day && boundary.Person == person
+	},
 }).Parse(`<!doctype html>
 <html lang="en">
 <head>
@@ -318,9 +337,10 @@ body { padding: 6mm; overflow: hidden; }
 .person-grid:last-child { border-bottom: 0; }
 .line { position: absolute; left: var(--left); height: 100%; border-left: 1px solid #ccc; font-size: 6pt; color: #555; }
 .line span { position: absolute; top: 1mm; transform: translateX(-50%); background: #fff; padding: 0 0.5mm; white-space: nowrap; }
-.slot { position: absolute; left: var(--left); width: var(--width); top: 0; height: 100%; border-right: 1px dashed #777; border-left: 1px dashed #bbb; text-align: center; font-size: 7pt; font-weight: 700; pointer-events: none; z-index: 1; }
+.slot { position: absolute; left: var(--left); width: var(--width); top: 0; height: 100%; text-align: center; font-size: 7pt; font-weight: 700; pointer-events: none; z-index: 1; }
 .slot-label { position: relative; z-index: 4; display: inline-block; background: #fff; padding: 0 0.5mm; }
 .slot small { font-size: 6pt; }
+.event-boundary { position: absolute; left: var(--left); top: 0; height: 100%; border-left: 1px dashed #777; pointer-events: none; z-index: 2; }
 .event { position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); border: 1px solid #555; background: #ddd; padding: 2mm 1mm 1mm; text-align: center; overflow: hidden; z-index: 3; }
 .event.muted { background: #eee; color: #444; }
 .event.outline { background: #fff; }
@@ -349,6 +369,7 @@ body { padding: 6mm; overflow: hidden; }
       {{ range .People }}{{ $person := .ID }}
         <section class="person-grid">
           {{ range $.MinuteLines }}<div class="line" data-marker-type="hour-guide" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
+          {{ range $.Boundaries }}{{ if sameBoundary . $day $person }}<div class="event-boundary" data-marker-type="event-boundary" style="--left: {{ .Left }};"></div>{{ end }}{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}{{ if $.Options.ShowSlotTimes }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Time }}</div>{{ end }}{{ end }}{{ end }}
           {{ range $.Events }}{{ if samePerson . $day $person }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
             {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}

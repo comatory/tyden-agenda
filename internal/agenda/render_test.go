@@ -43,7 +43,7 @@ func TestRender(t *testing.T) {
 		"FrE",
 		"1C",
 		"08:00-08:45",
-		"data-marker-type=\"slot-boundary\"",
+		"data-marker-type=\"event-boundary\"",
 		"data-marker-type=\"hour-guide\"",
 		"--top: 60.0000%; --height: 28.0000%;",
 	} {
@@ -146,7 +146,7 @@ func TestRenderSlotLabelsOncePerDay(t *testing.T) {
 	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
-	if got := strings.Count(output.String(), "class=\"slot\" data-marker-type=\"slot-boundary\""); got != 1 {
+	if got := strings.Count(output.String(), "class=\"slot\""); got != 1 {
 		t.Fatalf("slot count = %d, want 1:\n%s", got, output.String())
 	}
 	if got := output.String(); !strings.Contains(got, "08:00-08:45") {
