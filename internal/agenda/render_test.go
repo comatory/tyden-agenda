@@ -70,7 +70,7 @@ func TestRenderHidesSlotTimesWhenNoEvents(t *testing.T) {
 	}
 }
 
-func TestRenderHidesSlotLabelsAfterLastPopulatedSlot(t *testing.T) {
+func TestRenderHidesUnpopulatedSlotLabels(t *testing.T) {
 	data := Data{
 		Days:      []Day{"mon"},
 		People:    []Person{{ID: "p1", Label: "P1"}},
@@ -78,16 +78,20 @@ func TestRenderHidesSlotLabelsAfterLastPopulatedSlot(t *testing.T) {
 		Slots: []Slot{
 			{Label: "1", Start: "08:00", End: "08:45"},
 			{Label: "2", Start: "08:55", End: "09:40"},
+			{Label: "3", Start: "10:00", End: "10:45"},
 		},
-		Events: []Event{{Person: "p1", Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
+		Events: []Event{{Person: "p1", Day: "mon", Start: "10:00", End: "10:45", Title: "Cj"}},
 	}
 
 	var output bytes.Buffer
 	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
-	if got := output.String(); strings.Contains(got, ">2<br") {
-		t.Fatalf("rendered HTML contains slot after last populated slot:\n%s", got)
+	if got := output.String(); strings.Contains(got, ">1</span>") || strings.Contains(got, ">2</span>") {
+		t.Fatalf("rendered HTML contains unpopulated slot label:\n%s", got)
+	}
+	if got := output.String(); !strings.Contains(got, ">3</span>") {
+		t.Fatalf("rendered HTML missing populated slot label:\n%s", got)
 	}
 }
 

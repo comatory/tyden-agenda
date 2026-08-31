@@ -287,23 +287,19 @@ func minuteLines(start, end int) []minuteLineView {
 
 func daySlots(slots []slotView, events []eventView, day Day) []daySlotView {
 	daySlots := make([]daySlotView, 0, len(slots))
-	lastPopulated := -1
 	for _, slot := range slots {
 		view := daySlotView{slotView: slot}
 		for _, event := range events {
 			if event.Day == day && event.Left == slot.Left && event.Width == slot.Width {
 				view.Populated = true
-				lastPopulated = len(daySlots)
 				break
 			}
 		}
+		if !view.Populated {
+			continue
+		}
 		daySlots = append(daySlots, view)
 	}
-	if lastPopulated == -1 {
-		return nil
-	}
-
-	daySlots = daySlots[:lastPopulated+1]
 	return daySlots
 }
 
@@ -349,12 +345,12 @@ body { padding: 6mm; overflow: hidden; }
 .slot-label { position: relative; z-index: 4; display: inline-block; background: #fff; padding: 0 0.5mm; }
 .slot small { font-size: 6pt; }
 .event-boundary { position: absolute; left: var(--left); top: 0; height: 100%; border-left: 1px dashed #777; pointer-events: none; z-index: 2; }
-.event { position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); border: 1px solid #555; background: #ddd; padding: 2mm 1mm 1mm; text-align: center; overflow: hidden; z-index: 3; }
+.event { container-type: inline-size; position: absolute; left: var(--left); width: var(--width); top: var(--top); height: var(--height); border: 1px solid #555; background: #ddd; padding: 2mm 1mm 1mm; text-align: center; overflow: hidden; z-index: 3; }
 .event.muted { background: #eee; color: #444; }
 .event.outline { background: #fff; }
-.event-title { font-size: 11pt; font-weight: 700; line-height: 1.1; }
-.event-subtitle { font-size: 7pt; margin-top: 0.5mm; }
-.event-note { position: absolute; right: 1mm; top: 1mm; font-size: 6pt; }
+.event-title { font-size: clamp(7pt, calc(5.5pt + 8cqw), 11pt); font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.event-subtitle { font-size: clamp(5pt, calc(4.25pt + 4cqw), 7pt); margin-top: 0.5mm; white-space: nowrap; }
+.event-note { position: absolute; right: 1mm; top: 1mm; max-width: 35%; font-size: clamp(4pt, calc(3.25pt + 3cqw), 6pt); white-space: nowrap; }
 .event-time { position: absolute; left: var(--left); width: var(--width); top: 13%; text-align: center; font-size: 7pt; font-weight: 700; z-index: 3; }
 @media print {
   html, body { width: 297mm; height: 210mm; min-height: 0; }
