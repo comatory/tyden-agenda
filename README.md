@@ -48,6 +48,24 @@ tyden --data <path-to-data.json> > agenda.html
 
 You can then open the `agenda.html` in any browser. The HTML is already styled and ready to be printed.
 
+Optional render layers are enabled with `--show`. Default render layers are disabled with `--hide`. Repeat the flag or comma-separate values:
+
+```shell
+tyden --data <path-to-data.json> --show hour-labels > agenda.html
+```
+
+Supported `--show` values:
+
+| Value | Description |
+| --- | --- |
+| `hour-labels` | Show hour labels on each day grid. Hidden by default. |
+
+Supported `--hide` values:
+
+| Value | Description |
+| --- | --- |
+| `slot-times` | Hide lesson slot time ranges. Visible by default. |
+
 ## Data source
 
 The data source is one JSON file. It is intended to be edited by hand, kept in git, and reused week after week.

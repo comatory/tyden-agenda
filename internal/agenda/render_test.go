@@ -25,7 +25,7 @@ func TestRender(t *testing.T) {
 	}
 
 	var output bytes.Buffer
-	if err := Render(data, &output); err != nil {
+	if err := Render(data, &output, RenderOptions{ShowHourLabels: true, ShowSlotTimes: true}); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
 
@@ -59,7 +59,7 @@ func TestRenderRejectsInvalidStack(t *testing.T) {
 		}},
 	}
 
-	err := Render(data, &bytes.Buffer{})
+	err := Render(data, &bytes.Buffer{}, RenderOptions{})
 	if err == nil {
 		t.Fatal("Render() error = nil, want error")
 	}
@@ -75,7 +75,7 @@ func TestRenderDefaultsDays(t *testing.T) {
 	}
 
 	var output bytes.Buffer
-	if err := Render(data, &output); err != nil {
+	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
 
@@ -92,7 +92,7 @@ func TestRenderRejectsInvalidTimes(t *testing.T) {
 		Events:    []Event{},
 	}
 
-	err := Render(data, &bytes.Buffer{})
+	err := Render(data, &bytes.Buffer{}, RenderOptions{ShowSlotTimes: true})
 	if err == nil {
 		t.Fatal("Render() error = nil, want error")
 	}

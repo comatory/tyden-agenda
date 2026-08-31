@@ -10,8 +10,13 @@ import (
 
 var defaultDays = []Day{"mon", "tue", "wed", "thu", "fri"}
 
-func Render(data Data, writer io.Writer) error {
-	view, err := newRenderView(data)
+type RenderOptions struct {
+	ShowHourLabels bool
+	ShowSlotTimes  bool
+}
+
+func Render(data Data, writer io.Writer, options RenderOptions) error {
+	view, err := newRenderView(data, options)
 	if err != nil {
 		return err
 	}
@@ -27,6 +32,7 @@ type renderView struct {
 	Slots       []slotView
 	Events      []eventView
 	MinuteLines []minuteLineView
+	Options     RenderOptions
 }
 
 type dayView struct {
@@ -60,7 +66,7 @@ type minuteLineView struct {
 	Left  string
 }
 
-func newRenderView(data Data) (renderView, error) {
+func newRenderView(data Data, options RenderOptions) (renderView, error) {
 	start, err := parseMinutes(data.TimeRange.Start)
 	if err != nil {
 		return renderView{}, fmt.Errorf("parse time range start: %w", err)
@@ -155,6 +161,7 @@ func newRenderView(data Data) (renderView, error) {
 		Slots:       slots,
 		Events:      events,
 		MinuteLines: minuteLines(start, end),
+		Options:     options,
 	}, nil
 }
 
@@ -281,8 +288,8 @@ body { margin: 0; color: #111; font-family: Arial, Helvetica, sans-serif; }
   {{ range .Days }}{{ $day := .Key }}
     <div class="day-label" style="grid-row: {{ .Row }};">{{ .Label }}</div>
     <section class="day-grid" style="grid-row: {{ .Row }};">
-      {{ range $.MinuteLines }}<div class="line" style="--left: {{ .Left }};"><span>{{ .Label }}</span></div>{{ end }}
-      {{ range $.Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Label }}<br><small>{{ .Start }}-{{ .End }}</small></div>{{ end }}
+      {{ range $.MinuteLines }}<div class="line" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
+      {{ range $.Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Label }}{{ if $.Options.ShowSlotTimes }}<br><small>{{ .Start }}-{{ .End }}</small>{{ end }}</div>{{ end }}
       {{ range $.Events }}{{ if sameDay .Day $day }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
         {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
         <div class="event-title">{{ .Title }}</div>
