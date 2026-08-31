@@ -84,6 +84,40 @@ func TestRenderHidesSlotLabelsAfterLastPopulatedSlot(t *testing.T) {
 	}
 }
 
+func TestRenderShowsTimeForEventOutsideSlot(t *testing.T) {
+	data := Data{
+		Days:      []Day{"thu"},
+		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
+		Slots:     []Slot{{Label: "1", Start: "08:00", End: "08:45"}},
+		Events:    []Event{{Day: "thu", Start: "17:30", End: "18:30", Title: "Anglictina"}},
+	}
+
+	var output bytes.Buffer
+	if err := Render(data, &output, RenderOptions{ShowSlotTimes: true}); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if got := output.String(); !strings.Contains(got, "17:30-18:30") {
+		t.Fatalf("rendered HTML missing activity time:\n%s", got)
+	}
+}
+
+func TestRenderHidesTimeForEventInsideSlot(t *testing.T) {
+	data := Data{
+		Days:      []Day{"mon"},
+		TimeRange: TimeRange{Start: "07:00", End: "19:00"},
+		Slots:     []Slot{{Label: "1", Start: "08:00", End: "08:45"}},
+		Events:    []Event{{Day: "mon", Start: "08:00", End: "08:45", Title: "Cj"}},
+	}
+
+	var output bytes.Buffer
+	if err := Render(data, &output, RenderOptions{ShowSlotTimes: false}); err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+	if got := output.String(); strings.Contains(got, "08:00-08:45") {
+		t.Fatalf("rendered HTML contains lesson event time:\n%s", got)
+	}
+}
+
 func TestRenderRejectsInvalidStack(t *testing.T) {
 	data := Data{
 		TimeRange: TimeRange{Start: "07:00", End: "19:00"},

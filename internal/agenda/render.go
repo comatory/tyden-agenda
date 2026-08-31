@@ -44,6 +44,7 @@ type dayView struct {
 
 type eventView struct {
 	Day      Day
+	Time     string
 	Title    string
 	Subtitle string
 	Note     string
@@ -52,6 +53,7 @@ type eventView struct {
 	Width    string
 	Top      string
 	Height   string
+	InSlot   bool
 }
 
 type slotView struct {
@@ -134,6 +136,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 
 		events = append(events, eventView{
 			Day:      event.Day,
+			Time:     event.Start + "-" + event.End,
 			Title:    event.Title,
 			Subtitle: event.Subtitle,
 			Note:     event.Note,
@@ -142,6 +145,7 @@ func newRenderView(data Data, options RenderOptions) (renderView, error) {
 			Width:    percent(eventEnd-eventStart, end-start),
 			Top:      stackTop,
 			Height:   stackHeight,
+			InSlot:   inSlot(slots, eventStart, eventEnd, start, end),
 		})
 	}
 
@@ -280,6 +284,17 @@ func daySlots(slots []slotView, events []eventView, day Day) []daySlotView {
 	return daySlots
 }
 
+func inSlot(slots []slotView, eventStart, eventEnd, rangeStart, rangeEnd int) bool {
+	eventLeft := percent(eventStart-rangeStart, rangeEnd-rangeStart)
+	eventWidth := percent(eventEnd-eventStart, rangeEnd-rangeStart)
+	for _, slot := range slots {
+		if slot.Left == eventLeft && slot.Width == eventWidth {
+			return true
+		}
+	}
+	return false
+}
+
 var agendaTemplate = template.Must(template.New("agenda").Funcs(template.FuncMap{
 	"sameDay": func(a, b Day) bool { return a == b },
 }).Parse(`<!doctype html>
@@ -307,6 +322,7 @@ body { margin: 0; color: #111; font-family: Arial, Helvetica, sans-serif; }
 .event-title { font-size: 12pt; font-weight: 700; line-height: 1.1; }
 .event-subtitle { font-size: 7pt; margin-top: 1mm; }
 .event-note { position: absolute; right: 1mm; top: 1mm; font-size: 6pt; }
+.event-time { position: absolute; left: var(--left); width: var(--width); top: 11%; text-align: center; font-size: 7pt; font-weight: 700; }
 @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head>
@@ -318,6 +334,7 @@ body { margin: 0; color: #111; font-family: Arial, Helvetica, sans-serif; }
     <section class="day-grid" style="grid-row: {{ .Row }};">
       {{ range $.MinuteLines }}<div class="line" style="--left: {{ .Left }};">{{ if $.Options.ShowHourLabels }}<span>{{ .Label }}</span>{{ end }}</div>{{ end }}
       {{ range .Slots }}<div class="slot" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Label }}{{ if and $.Options.ShowSlotTimes .Populated }}<br><small>{{ .Start }}-{{ .End }}</small>{{ end }}</div>{{ end }}
+      {{ range $.Events }}{{ if and (sameDay .Day $day) (not .InSlot) }}<div class="event-time" style="--left: {{ .Left }}; --width: {{ .Width }};">{{ .Time }}</div>{{ end }}{{ end }}
       {{ range $.Events }}{{ if sameDay .Day $day }}<article class="event {{ .Style }}" style="--left: {{ .Left }}; --width: {{ .Width }}; --top: {{ .Top }}; --height: {{ .Height }};">
         {{ if .Note }}<div class="event-note">{{ .Note }}</div>{{ end }}
         <div class="event-title">{{ .Title }}</div>
