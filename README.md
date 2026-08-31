@@ -4,7 +4,33 @@ Create week agendas. Use case is to set up recurring events in external data fil
 
 ## Install
 
-TBD
+Install with Go:
+
+```shell
+go install github.com/comatory/tyden-agenda/cmd/tyden@latest
+```
+
+This installs the `tyden` command into `GOBIN`, or `GOPATH/bin` when `GOBIN` is not set.
+
+## Development
+
+Build:
+
+```shell
+go build ./cmd/tyden
+```
+
+Format:
+
+```shell
+go fmt ./...
+```
+
+Lint:
+
+```shell
+golangci-lint run
+```
 
 ## How to use
 
