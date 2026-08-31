@@ -81,8 +81,45 @@ func TestLoadDataRejectsUnknownFields(t *testing.T) {
 	if err == nil {
 		t.Fatal("LoadData() error = nil, want error")
 	}
-	if got := err.Error(); !strings.Contains(got, "unknown field") {
+	if got := err.Error(); !strings.Contains(got, "validate data:") {
 		t.Fatalf("error = %q, want unknown field error", got)
+	}
+}
+
+func TestLoadDataValidatesSchema(t *testing.T) {
+	dataPath := writeTestData(t, `{
+  "timeRange": { "start": "7:00", "end": "19:00" },
+  "people": [{ "id": "p1", "label": "P1" }],
+  "events": []
+}`)
+
+	err := func() error {
+		_, err := LoadData(dataPath)
+		return err
+	}()
+	if err == nil {
+		t.Fatal("LoadData() error = nil, want error")
+	}
+	if got := err.Error(); !strings.Contains(got, "validate data:") {
+		t.Fatalf("error = %q, want schema validation error", got)
+	}
+}
+
+func TestLoadDataRequiresPeople(t *testing.T) {
+	dataPath := writeTestData(t, `{
+  "timeRange": { "start": "07:00", "end": "19:00" },
+  "events": []
+}`)
+
+	err := func() error {
+		_, err := LoadData(dataPath)
+		return err
+	}()
+	if err == nil {
+		t.Fatal("LoadData() error = nil, want error")
+	}
+	if got := err.Error(); !strings.Contains(got, "validate data:") {
+		t.Fatalf("error = %q, want schema validation error", got)
 	}
 }
 
