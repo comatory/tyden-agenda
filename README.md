@@ -2,6 +2,8 @@
 
 Create week agendas. Use case is to set up recurring events in external data file and then use this tool to print it out on a paper.
 
+![Rendered weekly agenda example](docs/agenda-demo.png)
+
 ## Install
 
 Install with Go:
