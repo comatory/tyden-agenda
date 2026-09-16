@@ -112,13 +112,13 @@ Supported `--show` values:
 
 | Value | Description |
 | --- | --- |
-| `hour-labels` | Show hour labels on each day grid. Hidden by default. |
+| `hour-labels` | Show labels for full-hour guide lines, for example `08:00` and `09:00`, on each person row. Hidden by default. |
 
 Supported `--hide` values:
 
 | Value | Description |
 | --- | --- |
-| `slot-times` | Hide lesson slot time ranges. Visible by default. |
+| `slot-times` | Hide configured lesson/activity slot ranges, for example `08:00-08:45`. Slot labels such as `1` remain visible. Slot ranges are visible by default. |
 
 ## Data source
 
