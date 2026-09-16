@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/tyden-agenda.schema.json",
+  "$id": "https://raw.githubusercontent.com/comatory/tyden-agenda/main/internal/agenda/schema/agenda.schema.json",
   "title": "tyden agenda data source",
   "type": "object",
   "additionalProperties": false,

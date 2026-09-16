@@ -6,7 +6,23 @@ Create week agendas. Use case is to set up recurring events in external data fil
 
 ## Install
 
-Install with Go:
+Download a prebuilt binary from [GitHub Releases](https://github.com/comatory/tyden-agenda/releases):
+
+| Platform | Binary |
+| --- | --- |
+| macOS, Apple Silicon | `tyden-darwin-arm64` |
+| macOS, Intel | `tyden-darwin-amd64` |
+| Windows, ARM64 | `tyden-windows-arm64.exe` |
+| Windows, x86-64 | `tyden-windows-amd64.exe` |
+
+On macOS, make the downloaded binary executable and place it on your `PATH`:
+
+```shell
+chmod +x tyden-darwin-arm64
+sudo mv tyden-darwin-arm64 /usr/local/bin/tyden
+```
+
+Alternatively, install with Go:
 
 ```shell
 go install github.com/comatory/tyden-agenda/cmd/tyden@latest
@@ -38,6 +54,13 @@ Lint:
 
 ```shell
 golangci-lint run
+```
+
+To publish a release, push a version tag. The release workflow tests the project and attaches macOS and Windows binaries to the GitHub release:
+
+```shell
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 ## How to use
@@ -103,19 +126,28 @@ The data source is one JSON file. It is intended to be edited by hand, kept in g
 
 The first supported source type is a weekly template: define the week metadata, visible time range, optional lesson slots, and events placed on weekdays.
 
-Machine-readable schema: [`schema/agenda.schema.json`](schema/agenda.schema.json).
+Machine-readable schema: [`internal/agenda/schema/agenda.schema.json`](internal/agenda/schema/agenda.schema.json). Public schema URL: [`https://raw.githubusercontent.com/comatory/tyden-agenda/main/internal/agenda/schema/agenda.schema.json`](https://raw.githubusercontent.com/comatory/tyden-agenda/main/internal/agenda/schema/agenda.schema.json).
+
+The complete data source used for the screenshot is available at [`examples/demo.json`](examples/demo.json).
 
 Minimal example:
 
 ```json
 {
-  "$schema": "./schema/agenda.schema.json",
+  "$schema": "https://raw.githubusercontent.com/comatory/tyden-agenda/main/internal/agenda/schema/agenda.schema.json",
   "timeRange": {
     "start": "07:00",
     "end": "19:00"
   },
+  "people": [
+    {
+      "id": "alex",
+      "label": "Alex"
+    }
+  ],
   "events": [
     {
+      "person": "alex",
       "day": "mon",
       "start": "08:00",
       "end": "08:45",
@@ -129,7 +161,7 @@ Example with optional metadata and lesson slots:
 
 ```json
 {
-  "$schema": "./schema/agenda.schema.json",
+  "$schema": "https://raw.githubusercontent.com/comatory/tyden-agenda/main/internal/agenda/schema/agenda.schema.json",
   "title": "School week",
   "week": "2026-W36",
   "timezone": "Europe/Prague",
@@ -138,6 +170,9 @@ Example with optional metadata and lesson slots:
     "start": "07:00",
     "end": "19:00"
   },
+  "people": [
+    { "id": "alex", "label": "Alex" }
+  ],
   "slots": [
     { "label": "0", "start": "07:00", "end": "07:45" },
     { "label": "1", "start": "08:00", "end": "08:45" },
@@ -145,6 +180,7 @@ Example with optional metadata and lesson slots:
   ],
   "events": [
     {
+      "person": "alex",
       "day": "mon",
       "start": "08:00",
       "end": "08:45",
@@ -153,6 +189,7 @@ Example with optional metadata and lesson slots:
       "note": "1C"
     },
     {
+      "person": "alex",
       "day": "mon",
       "start": "08:00",
       "end": "08:45",
@@ -160,6 +197,7 @@ Example with optional metadata and lesson slots:
       "subtitle": "Blz"
     },
     {
+      "person": "alex",
       "day": "thu",
       "start": "17:30",
       "end": "18:30",
@@ -179,6 +217,7 @@ Fields:
 | `timezone` | no | Optional IANA timezone name. Defaults to local runtime timezone if omitted. |
 | `days` | no | Weekdays to render, in order. Defaults to Monday-Friday. |
 | `timeRange` | yes | Visible agenda range. Events should fit inside this range. |
+| `people` | yes | People rendered as agenda rows and referenced by events. |
 | `slots` | no | Named time blocks shown in the header, useful for school lessons. |
 | `events` | yes | Agenda items rendered on the grid. |
 
@@ -197,6 +236,7 @@ Event fields:
 
 | Field | Required | Description |
 | --- | --- | --- |
+| `person` | yes | ID of the person whose row contains the event. |
 | `day` | yes | Weekday where the event appears. |
 | `start` | yes | Start time in `HH:MM`. |
 | `end` | yes | End time in `HH:MM`. |
